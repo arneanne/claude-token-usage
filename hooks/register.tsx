@@ -11,27 +11,39 @@ const SCRIPT = 'scripts/cc_tokens.py'
 const summary = atom({ plugin: 'token-usage', key: 'summary' } as const, null)
 const error = atom({ plugin: 'token-usage', key: 'error' } as const, null)
 
+// How to start Python: `python3` on macOS and Linux; on Windows usually `python`
+// or the `py` launcher (there `python3` is often a stub that opens the Store).
+const PYTHONS = [['python3'], ['python'], ['py', '-3']]
+let python: string[] | null = null
+
 async function refresh($: EngineInterface) {
   const id = await $.session.id()
-  try {
-    const script = `${$.plugin.root}/${SCRIPT}`
-    const run = await $.process.run(['python3', script, '--summary', id], { timeoutMs: 60_000 })
-    if (run.exitCode !== 0) {
-      await update($, error, () => `cc_tokens.py exited ${run.exitCode}: ${run.stderr.slice(0, 300)}`)
+  const script = `${$.plugin.root}/${SCRIPT}`
+  let failure = 'Python 3.9+ was not found (tried python3, python, py -3)'
+  for (const cmd of python ? [python] : PYTHONS) {
+    try {
+      const run = await $.process.run([...cmd, script, '--summary', id], { timeoutMs: 60_000 })
+      if (run.exitCode !== 0) {
+        failure = `${cmd.join(' ')} exited ${run.exitCode}: ${run.stderr.slice(0, 300)}`
+        continue
+      }
+      const parsed = JSON.parse(run.stdout) as Summary
+      python = cmd
+      await update($, summary, () => parsed)
+      await update($, error, () => null)
       return
+    } catch (err) {
+      failure = `Could not run ${cmd.join(' ')}: ${String(err)}`
     }
-    const parsed = JSON.parse(run.stdout) as Summary
-    await update($, summary, () => parsed)
-    await update($, error, () => null)
-  } catch (err) {
-    await update($, error, () => `Could not run python3 (Python 3.9+ must be on PATH): ${String(err)}`)
   }
+  python = null
+  await update($, error, () => failure)
 }
 
 const usd = (x: number) => `$${x.toFixed(2)}`
 const tokens = (n: number) =>
   n >= 1e6 ? `${(n / 1e6).toFixed(1)}M` : n >= 1e3 ? `${(n / 1e3).toFixed(1)}K` : String(n)
-const baseName = (p = '') => p.split('/').filter(Boolean).pop() ?? p
+const baseName = (p = '') => p.split(/[\\/]/).filter(Boolean).pop() ?? p
 
 function sparkline(days: { cost: number }[]) {
   const bars = '▁▂▃▄▅▆▇█'

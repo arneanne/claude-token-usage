@@ -195,18 +195,29 @@ def short(s, width):
     return s if len(s) <= width else "…" + s[-(width - 1):]
 
 
+def norm(p):
+    """A path in one spelling for comparing: forward slashes, no trailing
+    slash, and case-folded where the file system ignores case (Windows)."""
+    return os.path.normcase(p).replace("\\", "/").rstrip("/")
+
+
+def folder_name(p):
+    return p.replace("\\", "/").rstrip("/").rsplit("/", 1)[-1] or p
+
+
 def assign_projects(records, subfolders=False):
     """Set r["group"]: the folder a session started in, folded into its
     outermost parent project (so myapp/src/lib counts under myapp)."""
     start = {}
     for r in sorted(records, key=lambda r: r["when"]):
         start.setdefault(r["session"], r["project"])
-    home = str(Path.home())
-    roots = sorted({p for p in start.values() if p != home}, key=len)
+    home = norm(str(Path.home()))
+    roots = sorted({p for p in start.values() if norm(p) != home}, key=len)
 
     def outer(p):
+        n = norm(p)
         for root in roots:
-            if p == root or p.startswith(root.rstrip("/") + "/"):
+            if n == norm(root) or n.startswith(norm(root) + "/"):
                 return root
         return p
 
@@ -299,6 +310,9 @@ def main():
     ap.add_argument("--prices", action="store_true", help="print the price table used for cost and exit")
     ap.add_argument("--summary", metavar="SESSION_ID", help="print the usage panel's JSON summary and exit")
     a = ap.parse_args()
+    # A Windows console or pipe may not take every character the tables use.
+    if hasattr(sys.stdout, "reconfigure"):
+        sys.stdout.reconfigure(errors="replace")
     if a.prices:
         print_prices()
         return
@@ -350,7 +364,7 @@ def main():
     for r in rows:
         label = str(r[a.by])
         if a.by == "session":
-            label = f"{r['started']}  {r[a.by][:8]}  {Path(r['project']).name}"
+            label = f"{r['started']}  {r[a.by][:8]}  {folder_name(r['project'])}"
             label = label[:label_w]
         print(line(short(label, label_w), [show(c, r[c]) for c in cols]))
     print(rule)

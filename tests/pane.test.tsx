@@ -42,3 +42,32 @@ test('the pane shows the session cost from cc_tokens.py', async ($, on) => {
     await ui.unmount()
   }
 })
+
+test('on Windows it falls back from python3 to python, and shortens Windows paths', async ($, on) => {
+  const tried: string[] = []
+  const winSummary = {
+    ...SUMMARY,
+    by_project: [{ ...T, project: 'C:\\Users\\me\\code\\winapp' }],
+  }
+  on('command.register', () => ({ value: { command: 'tokens' } }))
+  on('ui.open', () => ({ value: { isPlaced: true } }))
+  on('session.id', () => ({ value: 'abc' }))
+  on('process.run', (_, e) => {
+    tried.push(e.argv[0] ?? '')
+    return e.argv[0] === 'python3'
+      ? { value: { exitCode: 9009, stdout: '', stderr: 'Python was not found' } }
+      : { value: { exitCode: 0, stdout: JSON.stringify(winSummary), stderr: '' } }
+  })
+  on('session.start', (_, e) => ({ cwd: e.cwd }))
+  on('command.run', () => ({ text: '' }))
+
+  await $.session.start({ cwd: '/', surface: 'desktop', isInteractive: true })
+  await $.command.run({ command: 'tokens' })
+
+  expect(tried).toContain('python')
+  const ui = await $.ui.mount({ ...PANE, surface: 'desktop' })
+  const md = await ui.find({ type: 'Markdown' })
+  expect(md?.text).toContain('| winapp |')
+  expect(md?.text).not.toContain('C:')
+  await ui.unmount()
+})
