@@ -1,0 +1,13 @@
+{
+  "name": "claude-token-usage",
+  "description": "Claude Code token usage and cost panel",
+  "owner": {
+    "name": "arneanne"
+  },
+  "plugins": [
+    {
+      "name": "token-usage",
+      "source": "./"
+    }
+  ]
+}
