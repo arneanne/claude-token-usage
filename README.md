@@ -15,7 +15,33 @@ opens it by hand. It shows:
 If you use Claude Code on a Pro or Max subscription, the cost is what the usage
 would cost on the API, not what you were billed.
 
-## Install
+## Requirements
+
+- A recent Claude Code (tested on 2.1.304; older versions may not recognize
+  this kind of plugin, so update first if the install fails)
+- Python 3.9 or newer (`python3`, `python` or `py -3` on macOS, Linux or Windows)
+
+## Easiest: ask Claude Code to install it
+
+Copy this prompt into any Claude Code session:
+
+```
+Install the Claude Code plugin "token-usage" from the GitHub repository
+arneanne/claude-token-usage, for all my sessions (user scope). Please:
+1. Check that Python 3.9 or newer is available as python3, python or py -3,
+   and tell me how to install it if not.
+2. Run: claude plugin marketplace add arneanne/claude-token-usage
+3. Run: claude plugin install token-usage@claude-token-usage --scope user
+4. If a command fails because Claude Code is too old, tell me how to update
+   it instead of retrying.
+5. Run: claude plugin list, and confirm token-usage is enabled.
+Then tell me to open a new session and send a prompt to see the panel.
+```
+
+Claude asks before running each command. The panel appears in sessions started
+after the install, not in the one that installed it.
+
+## Install by hand
 
 At the prompt of a Claude Code terminal session:
 
@@ -35,7 +61,11 @@ claude plugin install token-usage --marketplace arneanne/claude-token-usage
 In the desktop app, where `/plugin` does not run: click + next to the prompt box,
 then Plugins, Add marketplace with `arneanne/claude-token-usage`, then Add plugin.
 
-Requires Python 3.9 or newer as `python3` on your PATH.
+To update later:
+
+```bash
+claude plugin update token-usage@claude-token-usage
+```
 
 ## Command line
 
